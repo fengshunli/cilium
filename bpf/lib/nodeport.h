@@ -125,8 +125,7 @@ static __always_inline bool nodeport_uses_dsr6(const struct ipv6_ct_tuple *tuple
 	return nodeport_uses_dsr(tuple->nexthdr);
 }
 
-static __always_inline int nodeport_nat_ipv6_fwd(struct __ctx_buff *ctx,
-						 const union v6addr *addr)
+static __always_inline int nodeport_nat_ipv6_fwd(struct __ctx_buff *ctx)
 {
 	struct ipv6_nat_target target = {
 		.min_port = NODEPORT_PORT_MIN_NAT,
@@ -134,9 +133,7 @@ static __always_inline int nodeport_nat_ipv6_fwd(struct __ctx_buff *ctx,
 	};
 	int ret;
 
-	ipv6_addr_copy(&target.addr, addr);
-
-	ret = snat_v6_needed(ctx, addr) ?
+	ret = snat_v6_needed(ctx, &target.addr) ?
 	      snat_v6_nat(ctx, &target) : CTX_ACT_OK;
 	if (ret == NAT_PUNT_TO_STACK)
 		ret = CTX_ACT_OK;
@@ -896,8 +893,10 @@ skip_service_lookup:
 #endif
 		ctx_set_xfer(ctx, XFER_PKT_NO_SVC);
 
+#ifndef ENABLE_MASQUERADE
 		if (nodeport_uses_dsr6(&tuple))
 			return CTX_ACT_OK;
+#endif
 
 		ctx_store_meta(ctx, CB_NAT_46X64, 0);
 		ctx_store_meta(ctx, CB_SRC_LABEL, src_identity);
@@ -1169,15 +1168,7 @@ drop:
 
 static __always_inline int handle_nat_fwd_ipv6(struct __ctx_buff *ctx)
 {
-#if defined(TUNNEL_MODE) && defined(IS_BPF_OVERLAY)
-	union v6addr addr = { .p1 = 0 };
-
-	BPF_V6(addr, ROUTER_IP);
-#else
-	union v6addr addr = IPV6_DIRECT_ROUTING;
-#endif
-
-	return nodeport_nat_ipv6_fwd(ctx, &addr);
+	return nodeport_nat_ipv6_fwd(ctx);
 }
 
 declare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),
