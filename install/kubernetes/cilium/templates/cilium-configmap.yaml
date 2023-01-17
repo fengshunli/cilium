@@ -810,6 +810,20 @@ data:
   {{- end }}
   cluster-pool-ipv6-mask-size: {{ .Values.ipam.operator.clusterPoolIPv6MaskSize | quote }}
 {{- end }}
+{{- if (eq $ipam "cluster-pool-v2beta2") }}
+  cluster-pool-map: |
+  {{- range $pool, $cidrs := .Values.ipam.operator.clusterPoolMap }}
+    {{ $pool }}=
+    {{- if hasKey $cidrs "ipv4CIDRs" -}}
+      ipv4-cidrs:{{- join "," $cidrs.ipv4CIDRs }}{{- ";" -}}
+      ipv4-mask-size:{{- join "," $cidrs.ipv4MaskSize -}}
+    {{- end -}}
+    {{- if hasKey $cidrs "ipv6CIDRs" -}}
+      ipv6-cidrs:{{ join "," $cidrs.ipv6CIDRs -}}{{- ";" -}}
+      ipv6-mask-size:{{- join "," $cidrs.ipv6MaskSize -}}
+    {{- end -}}
+  {{- end }}
+{{- end }}
 {{- end }}
 
 {{- if .Values.ipam.operator.externalAPILimitBurstSize }}
